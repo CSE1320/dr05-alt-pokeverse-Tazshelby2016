@@ -3,9 +3,9 @@
 
 ## Author
 
-* [Your Name Here]
-* [Your UTA ID Number]
-* [Your UTA Email]
-* [Cats or Dogs?]
+* Bryan Badgero
+* 1001684888
+* bxb4888@mavs.uta.edu
+* Yes
 
 * [Video Submission URL -- make sure permissions are open]
