@@ -4,10 +4,24 @@ import '../App.scss';
 import axios from 'axios'
 
 const SearchForm = ({poke, pokeSetter})=>{
+  const [searchVal, setSearch] = useState("");
+
+  let tempVal = "";
+
+  const checkSearchVal = (val,prevVal, setVal) => {
+    if (val !== prevVal) {
+      setVal(val);
+      console.log("Set to", val)
+    } 
+    else{
+      console.error("Trying to replace existing value")
+    }
+
+  };
   return (
   <>
-    <Input id="Search" value={poke} onChange={val => pokeSetter(val.target.val)} fluid
-    icon={<Icon name='search' inverted circular link />}
+    <Input id="inptValue" value={searchVal} onChange={val => setSearch(val.target.value)} fluid
+    icon={<Icon name='search' inverted circular link onClick={() => pokeSetter(searchVal)} />}
     placeholder='Search for Pokemon...'/>
   </>
   );
@@ -30,14 +44,14 @@ const PokemonCard = ({pokemonID}) => {
   }, [pokemonID]);
   if (data === null){
     console.error("Returned nothing.");
-    return;
+    // This is bad, but I do not remember how to fix.
+    return (<Card><CardHeader>Failed To Retrieve Pokemon.</CardHeader></Card>);
   }
   if (data.types === null){
     console.error("Returned no type.");
-    return;
+    // This is bad, but I do not remember how to fix.
+    return(<Card><CardHeader>Failed To Retrieve Pokemon.</CardHeader></Card>);
   }
-
-
   const typeList = data.types.map((type) => <Label>{type.type.name}</Label>);
   const statList = data.stats.map((stat) => <ListItem><ListContent floated='left'>{stat.stat.name}</ListContent><ListContent floated = "right">{stat.base_stat}</ListContent></ListItem>);
 
@@ -61,13 +75,12 @@ const PokemonCard = ({pokemonID}) => {
     );
 }
 const PokemonCardPage = () => {
-  const [poke, setPoke] = useState(null);
+  const [poke, setPoke] = useState("bulbasaur");
   return (
     <div className="CenteredLayout">
       <div>
         <SearchForm poke={poke} pokeSetter={setPoke}></SearchForm>
-        <p>{poke}</p>
-        <PokemonCard pokemonID="type-null"></PokemonCard>
+        <PokemonCard pokemonID={poke}></PokemonCard>
       </div>
     </div>
   );

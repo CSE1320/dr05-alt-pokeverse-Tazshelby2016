@@ -6,7 +6,7 @@ import { List, Segment, Button, Header, Label, Divider, Statistic} from 'semanti
 import '../App.scss';
 
 const GPSViewer = () => {
-  const student = "Your Name";
+  const student = "Bryan Badgero";
 
   // TODO
 
