@@ -57,7 +57,6 @@ const GPSViewer = () => {
       }
     }, [setCurrentLocs]
   );
-  // TODO
 
   return (
     <div className="CenteredLayout">
@@ -86,7 +85,7 @@ const GPSViewer = () => {
         <Divider></Divider>
         <Button primary fluid onClick={()=>GetCoord(geoLocs, setGeoLocs, currentLocs)}> 
           <span className="badge-button">LOG</span>
-          <Label circular color='blue' as='a'>0</Label>
+          <Label circular color='blue' as='a'>{geoLocs.length}</Label>
         </Button>
       </Segment>
     </div>

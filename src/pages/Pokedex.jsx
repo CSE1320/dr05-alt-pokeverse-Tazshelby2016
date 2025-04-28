@@ -3,28 +3,116 @@ import React, { useEffect, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { Header, Container, List, Item } from 'semantic-ui-react';
 import '../App.scss';
+import axios from 'axios';
 
 
 const resolvePokemonAPI = async (id) => {
-  // TODO
+  const pokéurl = "https://pokeapi.co/api/v2/pokemon/" + id;
+  axios.get(pokéurl)
+  .then(
+    (response) => {
+      console.log(response.data);
+      return response.data;
+    }
+  )
+  .catch(
+    (error)=>{
+      console.error(error);
+      console.error(pokéurl)
+    }
+  )
 }
 
 const resolveSightings = async() => {
   // TODO
 }
 
-const Pokedex = () => {
-  const [origin, setOrigin] = useState({longitude: "unresolved", latitude: "unresolved"})
-  
-  const APIKEY = "AIzaSyBJcm2icY4Izt-A3PpDqDM0210fTtCkdtM"; // will remain active until 5/1/2023
+const Entry = (latitude="unresolved", image="", name="XXX", distance="XXX", index = -1) => {
+  return (
+    latitude !== "unresolved" &&
 
-  const loader = new Loader({
-    apiKey: APIKEY,
-    version: "weekly",
-    libraries: ["places"]
-  });
+    <Item key={index}>
+      <Item.Image src={image} alt={name} />
+      <Item.Content>
+        <Item.Header>{name}</Item.Header>
+        <Item.Description>
+          <List>
+            <List.Item>Away</List.Item>
+            <List.Item>XXXº, XXXº</List.Item>
+          </List>
+          
+          
+        </Item.Description>
+      </Item.Content>
+    </Item>
+  )
+}
+
+const Pokedex = () => {
+  const [origin, setOrigin] = useState({longitude: "unresolved", latitude: "unresolved"});
+  const [sightings, setSightings] = useState([]);
+
+  useEffect(
+    () =>{
+      if("geolocation" in navigator)
+      {
+        const geoSuccess = (position) => {
+          setOrigin({longitude: position.coords.longitude, latitude: position.coords.latitude});
+          return;
+        }
+        const geoOptions = {
+          highAccuracy: false,
+          lifetime: 30000,
+          timeout: 3000,
+        }
+        const WatchID = (navigator.geolocation.watchPosition(geoSuccess, null, geoOptions));
+        console.log("The useless WatchID is", WatchID);
+      }
+    }, [setOrigin]
+  );
+  
+  useEffect(
+    ()=>{
+      console.log("Effect Triggered");
+      axios.get("https://hybridatelier.uta.edu/api/pokemon_sightings")
+      .then(
+        (response) => {
+          response.data.map(
+            ({coord,pokemon,index})=>{
+              resolvePokemonAPI(pokemon)
+              .then((pokemon_fin)=>{
+                  console.log(index, coord, pokemon_fin);
+                  setSightings(sightings.concat({coordinate: coord,pokemon: pokemon_fin}));
+                }
+              )
+              .catch(console.error("Failed"))
+            }
+          );
+        }
+      )
+      .catch(
+        (error)=>{
+          console.error(error);
+          console.error("https://hybridatelier.uta.edu/api/pokemon_sightings")
+        }
+      )
+    }, [origin]
+  );
+
+  useEffect(() =>{
+    console.log("temp")
+    console.log(sightings)
+  }, [sightings.pokemon]
+  );
+
+  const APIKEY = "AIzaSyBJcm2icY4Izt-A3PpDqDM0210fTtCkdtM"; // will remain active until 5/1/2025
 
   useEffect(()=>{
+    const loader = new Loader({
+      apiKey: APIKEY,
+      version: "weekly",
+      libraries: ["places"]
+    });
     loader
       .load()  
       .then((google)=>{
@@ -49,22 +137,6 @@ const Pokedex = () => {
       <Header dividing as="h2">Sightings (XX)</Header>
       <Item.Group>
         {
-          origin.latitude !== "unresolved" &&
-
-              <Item>
-                <Item.Image src="" />
-                <Item.Content>
-                  <Item.Header>XXX</Item.Header>
-                  <Item.Description>
-                    <List>
-                      <List.Item>XXX Away</List.Item>
-                      <List.Item>XXXº, XXXº</List.Item>
-                    </List>
-                    
-                    
-                  </Item.Description>
-                </Item.Content>
-              </Item>
         }
       </Item.Group>
     </Container>
