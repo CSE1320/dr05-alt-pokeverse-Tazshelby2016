@@ -5,29 +5,14 @@ import { Header, Container, List, Item } from 'semantic-ui-react';
 import '../App.scss';
 import axios from 'axios';
 
-
-const resolvePokemonAPI = async (id) => {
-  const pokéurl = "https://pokeapi.co/api/v2/pokemon/" + id;
-  axios.get(pokéurl)
-  .then(
-    (response) => {
-      console.log(response.data);
-      return response.data;
-    }
-  )
-  .catch(
-    (error)=>{
-      console.error(error);
-      console.error(pokéurl)
-    }
-  )
+const cleanStr = (str = "") =>{
+  const removeAt = (str[0] === "@")? str.slice(1):str;
+  const splitStr = removeAt.split(",");
+  const removeZ = splitStr.slice(0,2);
+  return removeZ;
 }
 
-const resolveSightings = async() => {
-  // TODO
-}
-
-const Entry = (latitude="unresolved", image="", name="XXX", distance="XXX", index = -1) => {
+const Entry = ({latitude="unresolved",longitude="unresolved", image="", name="XXX", distance="XXX", index = -1}) => {
   return (
     latitude !== "unresolved" &&
 
@@ -37,8 +22,8 @@ const Entry = (latitude="unresolved", image="", name="XXX", distance="XXX", inde
         <Item.Header>{name}</Item.Header>
         <Item.Description>
           <List>
-            <List.Item>Away</List.Item>
-            <List.Item>XXXº, XXXº</List.Item>
+            <List.Item key="0">{distance} Away</List.Item>
+            <List.Item key="1">{latitude}º, {longitude}º</List.Item>
           </List>
           
           
@@ -51,6 +36,7 @@ const Entry = (latitude="unresolved", image="", name="XXX", distance="XXX", inde
 const Pokedex = () => {
   const [origin, setOrigin] = useState({longitude: "unresolved", latitude: "unresolved"});
   const [sightings, setSightings] = useState([]);
+  const [watchIDs, setWatchIDs] = useState([]);
 
   useEffect(
     () =>{
@@ -65,62 +51,114 @@ const Pokedex = () => {
           lifetime: 30000,
           timeout: 3000,
         }
-        const WatchID = (navigator.geolocation.watchPosition(geoSuccess, null, geoOptions));
-        console.log("The useless WatchID is", WatchID);
+        const watchID = (navigator.geolocation.watchPosition(geoSuccess, null, geoOptions));
+        setWatchIDs(s=>s.concat(watchID));
       }
     }, [setOrigin]
   );
-  
+
+  // Cleaning up. Probably does this automatically, but this catches it sooner
   useEffect(
     ()=>{
-      console.log("Effect Triggered");
-      axios.get("https://hybridatelier.uta.edu/api/pokemon_sightings")
-      .then(
-        (response) => {
-          response.data.map(
-            ({coord,pokemon,index})=>{
-              resolvePokemonAPI(pokemon)
-              .then((pokemon_fin)=>{
-                  console.log(index, coord, pokemon_fin);
-                  setSightings(sightings.concat({coordinate: coord,pokemon: pokemon_fin}));
-                }
-              )
-              .catch(console.error("Failed"))
-            }
-          );
-        }
-      )
-      .catch(
-        (error)=>{
-          console.error(error);
-          console.error("https://hybridatelier.uta.edu/api/pokemon_sightings")
-        }
-      )
-    }, [origin]
-  );
-
-  useEffect(() =>{
-    console.log("temp")
-    console.log(sightings)
-  }, [sightings.pokemon]
-  );
-
-  const APIKEY = "AIzaSyBJcm2icY4Izt-A3PpDqDM0210fTtCkdtM"; // will remain active until 5/1/2025
+      const oldWatch = watchIDs.splice(0,watchIDs.length - 1)
+      if (oldWatch.length > 0){
+        console.log("old watchPositions found",oldWatch);
+        oldWatch.forEach(
+          (wat)=>{
+            console.log("Clearing watchPosition ", wat)
+            navigator.geolocation.clearWatch(wat);
+          }
+        )
+      }
+    },
+    [watchIDs]
+  )
+  const APIKEY = "AIzaSyBCrMDlZqQhspp4oUGKHiVtx6tmE3Yt74w"; // will remain active until 5/1/2025
 
   useEffect(()=>{
-    const loader = new Loader({
-      apiKey: APIKEY,
-      version: "weekly",
-      libraries: ["places"]
-    });
-    loader
-      .load()  
-      .then((google)=>{
-         // GOOGLE MAP API LIBRARY CAN BE ACCESSED HERE
-      })
-      .catch(console.error)
+    console.log("origin changed, now", origin);
+    setSightings([]);
+    axios.get("https://hybridatelier.uta.edu/api/pokemon_sightings")
+    .then(
+      (response) => {
+        console.log("Received Pokemon sightings data", response.data)
+        setSightings([]);
+        response.data.forEach(
+          ({coord,pokemon,index})=>{
+            const pokéurl = "https://pokeapi.co/api/v2/pokemon/" + pokemon;
+            axios.get(pokéurl)
+            .then(
+              (response) => {
+                console.log("Received pokemon data, ", response.data);
+                const cleanedCoord = cleanStr(coord);
+                console.log("Now at Maps API");
+                const test = (vl, stat) => {
+                  if(stat === "OK"){
+                    console.log("Called Back", vl.rows.elements, stat);
+                    setSightings(s=>s.concat({coordinate: cleanedCoord, distance: "XXX",pokemon: response.data}));
+                  }
+                  else{
+                    console.log("Called Back", vl, stat);
+                    setSightings(s=>s.concat({coordinate: cleanedCoord, distance: "XXX",pokemon: response.data}));
+                  }
+                }
+                const loader = new Loader({
+                  apiKey: APIKEY,
+                  version: "weekly",
+                  libraries: ["places"]
+                });
+                loader
+                  .importLibrary("routes")
+                  .then(({DistanceMatrixService})=>{
+                    loader.importLibrary("routes")
+                    .then(({TravelMode}) =>{
+                        loader.importLibrary("core")
+                        .then(({UnitSystem})=>
+                          {
+                            loader.importLibrary("core")
+                            .then( ({LatLng})=>
+                              {
+                                // GOOGLE MAP API LIBRARY CAN BE ACCESSED HERE
+                                const distMat = new DistanceMatrixService();
+                                console.log("The returned import is", distMat);
+                                const originLatLng = [{lat: parseFloat(origin.latitude), lng: parseFloat(origin.longitude)}];
+                                const destLatLng = [{lat: parseFloat(cleanedCoord[0]), lng: parseFloat(cleanedCoord[1])}];
+                                const ret = distMat.getDistanceMatrix({destinations: destLatLng, origins: originLatLng, travelMode: TravelMode.DRIVING, unitSystem: UnitSystem.METRIC, avoidHighways: false, avoidTolls: false}, test);
+                                console.log("Potential distance", ret.PromiseResult)
+                              }
+                            )
+                          }
+                        )
+                      }
+                    )
+                  })
+                  .catch(console.error)
+              }
+            )
+            .catch(
+              (error)=>{
+                console.error(error);
+                console.error(pokéurl)
+              }
+            )
+          }
+        );
+      }
+    )
+    .catch(
+      (error)=>{
+        console.error(error);
+        console.error("https://hybridatelier.uta.edu/api/pokemon_sightings")
+      }
+    )
     }, [origin])
 
+  sightings.forEach(
+    ({coordinate, distance,pokemon},index)=>{
+      console.log("Coordinate: ", coordinate, "Distance", distance, "Pokemon: ", pokemon, "index", index);
+    }
+  )
+  const listItems = sightings.map(({coordinate, distance, pokemon}, index)=><Entry latitude={coordinate[0]} longitude={coordinate[1]} image={pokemon.sprites.front_default} name={pokemon.name} distance={distance} index = {index}></Entry>);
   return (
 
     <Container id='pokedex'>
@@ -134,17 +172,15 @@ const Pokedex = () => {
               <List.Content>Longitude</List.Content>
           </List.Item>
         </List>
-      <Header dividing as="h2">Sightings (XX)</Header>
+      <Header dividing as="h2">Sightings ({sightings.length})</Header>
       <Item.Group>
-        {
-        }
+        {listItems}
       </Item.Group>
     </Container>
 
-
   );
 };
-{/* <TableCell>
+/*{ <TableCell>
 
-</TableCell> */}
+</TableCell> }*/
 export default Pokedex;

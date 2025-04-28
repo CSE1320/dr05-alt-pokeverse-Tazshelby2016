@@ -53,7 +53,7 @@ const GPSViewer = () => {
           lifetime: 30000,
           timeout: 3000,
         }
-        const WatchID = (navigator.geolocation.watchPosition(geoSuccess, null, geoOptions));
+        const watchID = (navigator.geolocation.watchPosition(geoSuccess, null, geoOptions));
       }
     }, [setCurrentLocs]
   );
