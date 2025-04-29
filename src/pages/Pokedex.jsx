@@ -12,7 +12,11 @@ const cleanStr = (str = "") =>{
   return removeZ;
 }
 
-const Entry = ({latitude="unresolved",longitude="unresolved", image="", name="XXX", distance="XXX", index = -1}) => {
+const srtDist = (a,b)=>{
+  return (a.sort-b.sort);
+}
+
+const Entry = ({latitude="unresolved",longitude="unresolved", image="", name="XXX", distance="XXX", index = -1, sort = Infinity}) => {
   return (
     latitude !== "unresolved" &&
 
@@ -34,8 +38,40 @@ const Entry = ({latitude="unresolved",longitude="unresolved", image="", name="XX
 }
 
 const Pokedex = () => {
+  const APIKEY = "AIzaSyBCrMDlZqQhspp4oUGKHiVtx6tmE3Yt74w";
+  const loader = new Loader({
+    apiKey: APIKEY,
+    version: "weekly",
+    libraries: ["places"]
+  });
+  
+  const [travelMode, getTravelMode] = useState({});
+  const [unitSystem, getUnitSystem] = useState({});
+  const [latLng, getLatLng] = useState({});
+  
+  loader.importLibrary("routes").then(
+    ({TravelMode}) =>{
+      getTravelMode(TravelMode);
+    }
+  )
+  loader.importLibrary("core").then(
+    ({UnitSystem})=>
+    {
+      getUnitSystem(UnitSystem);
+    }
+  )
+  
+  loader.importLibrary("core").then(
+    ({LatLng})=>
+    {
+      getLatLng(LatLng);
+    }
+  )
+
+
   const [origin, setOrigin] = useState({longitude: "unresolved", latitude: "unresolved"});
   const [sightings, setSightings] = useState([]);
+  const [sortedSightings, setSortedSightings] = useState([]);
   const [watchIDs, setWatchIDs] = useState([]);
 
   useEffect(
@@ -73,7 +109,6 @@ const Pokedex = () => {
     },
     [watchIDs]
   )
-  const APIKEY = "AIzaSyBCrMDlZqQhspp4oUGKHiVtx6tmE3Yt74w"; // will remain active until 5/1/2025
 
   useEffect(()=>{
     console.log("origin changed, now", origin);
@@ -92,45 +127,43 @@ const Pokedex = () => {
                 console.log("Received pokemon data, ", response.data);
                 const cleanedCoord = cleanStr(coord);
                 console.log("Now at Maps API");
+
                 const test = (vl, stat) => {
-                  if(stat === "OK"){
-                    console.log("Called Back", vl.rows.elements, stat);
-                    setSightings(s=>s.concat({coordinate: cleanedCoord, distance: "XXX",pokemon: response.data}));
+                  if((stat === "OK") && (vl !== null) && (vl !== undefined)){
+                    console.log("Called Back", vl, stat);
+                    if((((vl.rows)[0]).elements)[0].hasOwnProperty("distance")){
+                      const distanceText = ((((vl.rows)[0]).elements)[0]).distance.text;
+                      const sortNum = ((((vl.rows)[0]).elements)[0]).distance.value;
+                      setSightings(s=>s.concat({coordinate: cleanedCoord, distance: distanceText,pokemon: response.data, sort: sortNum}));
+                    }
+                    else{
+                      console.error("Returned value is not a distance.");
+                      if((((vl.rows)[0]).elements)[0].hasOwnProperty("status")){
+                        console.error("Distance Calculation returned status: ", (((vl.rows)[0]).elements)[0].status);
+                      }
+                      setSightings(s=>s.concat({coordinate: cleanedCoord, distance: "∞",pokemon: response.data, sort: Infinity}));
+                    }
                   }
                   else{
-                    console.log("Called Back", vl, stat);
-                    setSightings(s=>s.concat({coordinate: cleanedCoord, distance: "XXX",pokemon: response.data}));
+                    console.error("Call Back Failed", vl, stat);
+                    setSightings(s=>s.concat({coordinate: cleanedCoord, distance: "∞",pokemon: response.data, sort: Infinity}));
                   }
                 }
-                const loader = new Loader({
+                // Cannot work externally with constant objects.
+                const loader2 = new Loader({
                   apiKey: APIKEY,
                   version: "weekly",
                   libraries: ["places"]
                 });
-                loader
+                loader2
                   .importLibrary("routes")
                   .then(({DistanceMatrixService})=>{
-                    loader.importLibrary("routes")
-                    .then(({TravelMode}) =>{
-                        loader.importLibrary("core")
-                        .then(({UnitSystem})=>
-                          {
-                            loader.importLibrary("core")
-                            .then( ({LatLng})=>
-                              {
-                                // GOOGLE MAP API LIBRARY CAN BE ACCESSED HERE
-                                const distMat = new DistanceMatrixService();
-                                console.log("The returned import is", distMat);
-                                const originLatLng = [{lat: parseFloat(origin.latitude), lng: parseFloat(origin.longitude)}];
-                                const destLatLng = [{lat: parseFloat(cleanedCoord[0]), lng: parseFloat(cleanedCoord[1])}];
-                                const ret = distMat.getDistanceMatrix({destinations: destLatLng, origins: originLatLng, travelMode: TravelMode.DRIVING, unitSystem: UnitSystem.METRIC, avoidHighways: false, avoidTolls: false}, test);
-                                console.log("Potential distance", ret.PromiseResult)
-                              }
-                            )
-                          }
-                        )
-                      }
-                    )
+                    // GOOGLE MAP API LIBRARY CAN BE ACCESSED HERE
+                    const distMat = new DistanceMatrixService();
+                    console.log("The returned import is", distMat);
+                    const originLatLng = [{lat: parseFloat(origin.latitude), lng: parseFloat(origin.longitude)}];
+                    const destLatLng = [{lat: parseFloat(cleanedCoord[0]), lng: parseFloat(cleanedCoord[1])}];
+                    distMat.getDistanceMatrix({destinations: destLatLng, origins: originLatLng, travelMode: travelMode.DRIVING, unitSystem: unitSystem.METRIC, avoidHighways: false, avoidTolls: false}, test);
                   })
                   .catch(console.error)
               }
@@ -151,14 +184,19 @@ const Pokedex = () => {
         console.error("https://hybridatelier.uta.edu/api/pokemon_sightings")
       }
     )
-    }, [origin])
-
-  sightings.forEach(
-    ({coordinate, distance,pokemon},index)=>{
-      console.log("Coordinate: ", coordinate, "Distance", distance, "Pokemon: ", pokemon, "index", index);
-    }
+    },
+    [origin, travelMode.DRIVING, unitSystem.METRIC]
   )
-  const listItems = sightings.map(({coordinate, distance, pokemon}, index)=><Entry latitude={coordinate[0]} longitude={coordinate[1]} image={pokemon.sprites.front_default} name={pokemon.name} distance={distance} index = {index}></Entry>);
+
+  useEffect(
+    ()=>{
+      setSortedSightings([]);
+      setSortedSightings(sightings.toSorted(srtDist));
+    },
+    [sightings]
+  )
+  
+  const listItems = sortedSightings.map(({coordinate, distance, pokemon}, index)=><Entry latitude={coordinate[0]} longitude={coordinate[1]} image={pokemon.sprites.front_default} name={pokemon.name} distance={distance} index = {index}></Entry>);
   return (
 
     <Container id='pokedex'>
