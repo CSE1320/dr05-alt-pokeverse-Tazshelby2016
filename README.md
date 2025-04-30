@@ -8,4 +8,4 @@
 * bxb4888@mavs.uta.edu
 * Yes
 
-* [Video Submission URL -- make sure permissions are open]
+* [Video Submission URL -- make sure permissions are open](https://drive.google.com/drive/folders/1fpwXOv8-Xk_HSWV1Lfi1NpcraLYJkJrp?usp=sharing)
