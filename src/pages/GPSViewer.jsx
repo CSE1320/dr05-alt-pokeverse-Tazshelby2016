@@ -36,7 +36,7 @@ const GPSViewer = () => {
   // Stores all locations
   const [geoLocs, setGeoLocs] = useState([]);
   const [currentLocs, setCurrentLocs] = useState([]);
-
+  const [watchIDs, setWatchIDs] = useState([]);
 
 
 
@@ -54,9 +54,27 @@ const GPSViewer = () => {
           timeout: 3000,
         }
         const watchID = (navigator.geolocation.watchPosition(geoSuccess, null, geoOptions));
+        setWatchIDs(s=>s.concat(watchID));
       }
     }, [setCurrentLocs]
   );
+
+  // Cleaning up. Probably does this automatically, but this catches it sooner
+  useEffect(
+    ()=>{
+      const oldWatch = watchIDs.splice(0,watchIDs.length - 1)
+      if (oldWatch.length > 0){
+        console.log("old watchPositions found",oldWatch);
+        oldWatch.forEach(
+          (wat)=>{
+            console.log("Clearing watchPosition ", wat)
+            navigator.geolocation.clearWatch(wat);
+          }
+        )
+      }
+    },
+    [watchIDs]
+  )
 
   return (
     <div className="CenteredLayout">
